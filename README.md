@@ -35,6 +35,26 @@ The dashboard is at:
 http://localhost:47831
 ```
 
+## Menu Bar App
+
+On the `macos-menu-bar-app` branch, XLock also includes a native Swift menu bar wrapper around the existing local engine.
+
+Run it in development:
+
+```sh
+npm run menu-bar
+```
+
+The menu bar app starts the existing Node service/session watcher, polls the local status endpoint, and gives quick controls for:
+
+- Open X
+- Block Now
+- Back to Codex
+- Open Dashboard
+- Open Extension Folder
+- Install/Repair Codex Hooks
+- Run Health Check
+
 ## Extension
 
 Load this folder as an unpacked extension in Arc or Chrome:

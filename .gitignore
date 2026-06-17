@@ -1,8 +1,8 @@
 artifacts/
 node_modules/
+.build/
 .DS_Store
 *.log
 *.tmp
 .env
 .env.*
-

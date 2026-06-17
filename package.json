@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "menu-bar": "swift run XLockMenuBar",
     "start": "node service.mjs",
     "launch": "node cli.mjs launch",
     "status": "node cli.mjs status",
