@@ -1,0 +1,22 @@
+{
+  "name": "build-in-public-gate",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node service.mjs",
+    "launch": "node cli.mjs launch",
+    "status": "node cli.mjs status",
+    "start-building": "node cli.mjs start",
+    "end-building": "node cli.mjs end",
+    "hook-status": "node cli.mjs hook-status",
+    "hook-install": "node cli.mjs hook-install",
+    "trust-hooks": "node cli.mjs trust-hooks",
+    "watch-hooks": "node cli.mjs watch-hooks",
+    "probe-cli-hooks": "node cli.mjs probe-cli-hooks",
+    "probe-notify": "node cli.mjs probe-notify",
+    "watch-sessions": "node scripts/codex-session-watcher.mjs",
+    "probe-session-watcher": "node cli.mjs probe-session-watcher",
+    "completion": "node cli.mjs completion",
+    "proof": "node cli.mjs proof"
+  }
+}
