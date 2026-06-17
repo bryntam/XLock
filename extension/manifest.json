@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Build in Public Gate",
+  "name": "XLock",
   "version": "0.1.0",
-  "description": "Blocks X/Twitter unless a local Codex build session is active.",
+  "description": "Locks X unless a local Codex build session is active.",
   "permissions": ["storage"],
   "host_permissions": ["http://localhost:47831/*", "https://x.com/*", "https://twitter.com/*"],
   "content_scripts": [
@@ -14,6 +14,6 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Build in Public Gate"
+    "default_title": "XLock"
   }
 }

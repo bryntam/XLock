@@ -1,8 +1,8 @@
-# Build in Public Gate
+# XLock
 
-Build in Public Gate is a local macOS MVP for people who build with Codex and post on X/Twitter.
+XLock is a local macOS MVP for people who build with Codex and post on X.
 
-When Codex is working, X unlocks so you can scroll, draft, and post. When Codex is done, X is blocked with an overlay without closing the tab, so drafts stay in place.
+X unlocks only while Codex works. When Codex is done, X is blocked with an overlay without closing the tab, so drafts stay in place.
 
 ## Status
 
@@ -43,7 +43,7 @@ Load this folder as an unpacked extension in Arc or Chrome:
 extension
 ```
 
-When the service is idle, X/Twitter gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay blocked when Codex is not working.
+When the service is idle, X gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay blocked when Codex is not working.
 
 ## Codex Hooks
 
@@ -92,7 +92,7 @@ The install can wrap Codex's existing `notify` command with:
 scripts/codex-notify-wrapper.mjs
 ```
 
-When Codex sends `turn-ended`, the wrapper posts to `/codex-hook/stop`, so X/Twitter gets blocked when the chat finishes even if lifecycle hooks do not fire.
+When Codex sends `turn-ended`, the wrapper posts to `/codex-hook/stop`, so X gets blocked when the chat finishes even if lifecycle hooks do not fire.
 
 To test only this fallback:
 

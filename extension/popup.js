@@ -12,6 +12,5 @@ async function post(path) {
   await fetch(`${serviceUrl}${path}`, { method: "POST" });
   await refresh();
 }
-start.onclick = () => post("/session/start");
 end.onclick = () => post("/session/end");
 refresh();

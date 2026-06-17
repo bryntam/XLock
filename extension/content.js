@@ -1,6 +1,6 @@
 (function () {
   const serviceUrl = "http://localhost:47831";
-  const overlayId = "build-in-public-gate-overlay";
+  const overlayId = "xlock-overlay";
 
   function ensureOverlay() {
     let overlay = document.getElementById(overlayId);

@@ -161,7 +161,7 @@ function html(response, body) {
 function dashboard() {
   return `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Build in Public Gate</title>
+<title>XLock</title>
 <style>
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101114;color:#f5f5f0}
   main{max-width:760px;margin:0 auto;padding:32px 20px}
@@ -173,9 +173,9 @@ function dashboard() {
   code{background:#252933;padding:2px 5px;border-radius:5px}
 </style>
 <main>
-  <h1>Build in Public Gate</h1>
+  <h1>XLock</h1>
   <section class="status">
-    <div>X/Twitter is</div>
+    <div>X is</div>
     <div id="mode" class="mode">...</div>
     <div id="meta"></div>
   </section>
@@ -221,5 +221,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Build in Public Gate listening on http://localhost:${port}`);
+  console.log(`XLock listening on http://localhost:${port}`);
 });
