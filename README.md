@@ -45,6 +45,13 @@ Run it in development:
 npm run menu-bar
 ```
 
+Build a local app bundle:
+
+```sh
+npm run package-app
+open dist/XLock.app
+```
+
 The menu bar app starts the existing Node service/session watcher, polls the local status endpoint, and gives quick controls for:
 
 - Open X

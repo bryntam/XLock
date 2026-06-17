@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "menu-bar": "swift run XLockMenuBar",
+    "package-app": "bash scripts/package-macos-app.sh",
     "start": "node service.mjs",
     "launch": "node cli.mjs launch",
     "status": "node cli.mjs status",
