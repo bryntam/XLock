@@ -7,7 +7,7 @@ struct XLockStatus: Decodable {
 }
 
 struct XLockState: Decodable {
-  let armed: Bool
+  let locked: Bool
   let mode: String
   let twitterAllowed: Bool
   let sessionSource: String
@@ -22,7 +22,7 @@ final class XLockMenuBarApp: NSObject, NSApplicationDelegate {
   private let menu = NSMenu()
   private let statusMenuItem = NSMenuItem(title: "Starting XLock...", action: nil, keyEquivalent: "")
   private let heartbeatMenuItem = NSMenuItem(title: "Extension: checking...", action: nil, keyEquivalent: "")
-  private let armPauseMenuItem = NSMenuItem(title: "Arm XLock", action: #selector(toggleArmed), keyEquivalent: "a")
+  private let lockUnlockMenuItem = NSMenuItem(title: "Lock XLock", action: #selector(toggleLocked), keyEquivalent: "l")
   private let serviceURL = URL(string: "http://localhost:47831")!
   private let projectRoot: URL
   private var pollTimer: Timer?
@@ -86,7 +86,7 @@ final class XLockMenuBarApp: NSObject, NSApplicationDelegate {
     menu.addItem(statusMenuItem)
     menu.addItem(heartbeatMenuItem)
     menu.addItem(.separator())
-    menu.addItem(armPauseMenuItem)
+    menu.addItem(lockUnlockMenuItem)
     menu.addItem(.separator())
     menu.addItem(NSMenuItem(title: "Open X", action: #selector(openX), keyEquivalent: "x"))
     menu.addItem(NSMenuItem(title: "Block Now", action: #selector(blockNow), keyEquivalent: "b"))
@@ -139,17 +139,17 @@ final class XLockMenuBarApp: NSObject, NSApplicationDelegate {
       heartbeatMenuItem.title = "Extension: waiting for X tab"
     }
 
-    if !state.armed {
-      statusItem.button?.title = "XLock: Paused"
-      statusMenuItem.title = "XLock is paused"
-      armPauseMenuItem.title = "Arm XLock"
+    if !state.locked {
+      statusItem.button?.title = "XLock: Unlocked"
+      statusMenuItem.title = "XLock is unlocked"
+      lockUnlockMenuItem.title = "Lock XLock"
       return
     }
 
-    let lockText = state.twitterAllowed ? "Unlocked" : "Blocked"
-    statusItem.button?.title = state.twitterAllowed ? "XLock: Open" : "XLock: Locked"
+    let lockText = state.twitterAllowed ? "Unlocked" : "Locked"
+    statusItem.button?.title = state.twitterAllowed ? "XLock: Unlocked" : "XLock: Locked"
     statusMenuItem.title = "X is \(lockText) • \(state.mode) • \(state.elapsedSeconds)s"
-    armPauseMenuItem.title = "Pause XLock"
+    lockUnlockMenuItem.title = "Unlock XLock"
   }
 
   private func shortTime(_ isoDate: String) -> String {
@@ -162,8 +162,8 @@ final class XLockMenuBarApp: NSObject, NSApplicationDelegate {
     post("/focus/twitter")
   }
 
-  @objc private func toggleArmed() {
-    let path = latestState?.armed == true ? "/gate/pause" : "/gate/arm"
+  @objc private func toggleLocked() {
+    let path = latestState?.locked == true ? "/gate/unlock" : "/gate/lock"
     post(path)
   }
 

@@ -20,7 +20,7 @@
       "text-align:center",
       "padding:24px"
     ].join(";");
-    overlay.innerHTML = "<div><div style='font-size:32px;margin-bottom:8px'>X is blocked</div><div>Start a Codex build to keep building in public.</div></div>";
+    overlay.innerHTML = "<div><div style='font-size:32px;margin-bottom:8px'>X is locked</div><div>Start a Codex build to unlock X while you ship.</div></div>";
     document.documentElement.appendChild(overlay);
     return overlay;
   }
@@ -39,7 +39,7 @@
       });
       const response = await fetch(`${serviceUrl}/status`);
       const payload = await response.json();
-      setBlocked(payload.data.armed && !payload.data.twitterAllowed);
+      setBlocked(payload.data.locked && !payload.data.twitterAllowed);
     } catch {
       setBlocked(true);
     }

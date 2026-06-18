@@ -2,7 +2,7 @@
 
 XLock is a local macOS MVP for people who build with Codex and post on X.
 
-X unlocks only while Codex works. When Codex is done, X is blocked with an overlay without closing the tab, so drafts stay in place.
+X unlocks only while Codex works. When Codex is done, X is locked with an overlay without closing the tab, so drafts stay in place.
 
 ## Status
 
@@ -54,7 +54,7 @@ open dist/XLock.app
 
 The menu bar app starts the existing Node service/session watcher, polls the local status endpoint, and gives quick controls for:
 
-- Arm XLock / Pause XLock
+- Lock XLock / Unlock XLock
 - Open X
 - Block Now
 - Back to Codex
@@ -63,7 +63,7 @@ The menu bar app starts the existing Node service/session watcher, polls the loc
 - Install/Repair Codex Hooks
 - Run Health Check
 
-Use **Pause XLock** when you are not actively building and posting at the same time. While paused, XLock leaves X alone and ignores Codex start/stop signals. Use **Arm XLock** when you want the build-and-post loop: X is blocked while Codex is idle and unlocks only during Codex work.
+Use **Unlock XLock** when you are not actively building and posting at the same time. While unlocked, XLock leaves X alone and ignores Codex start/stop signals. Use **Lock XLock** when you want the build-and-post loop: X is locked while Codex is idle and unlocks only during Codex work.
 
 ## Extension
 
@@ -73,7 +73,7 @@ Load this folder as an unpacked extension in Arc or Chrome:
 extension
 ```
 
-When XLock is paused, X is normal. When XLock is armed and idle, X gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay blocked when XLock is armed and Codex is not working.
+When XLock is unlocked, X is normal. When XLock is locked and idle, X gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay locked when XLock is locked and Codex is not working.
 
 ## Codex Hooks
 
@@ -100,7 +100,7 @@ npm run hook-status
 
 ## Session Watcher
 
-The Desktop app writes live turn events to `~/.codex/sessions`. The session watcher follows the newest session JSONL file and unlocks X when it sees a fresh user turn or task start. It blocks X again when it sees task completion.
+The Desktop app writes live turn events to `~/.codex/sessions`. The session watcher follows the newest session JSONL file and unlocks X when it sees a fresh user turn or task start. It locks X again when it sees task completion.
 
 Run it in the foreground:
 
@@ -122,7 +122,7 @@ The install can wrap Codex's existing `notify` command with:
 scripts/codex-notify-wrapper.mjs
 ```
 
-When Codex sends `turn-ended`, the wrapper posts to `/codex-hook/stop`, so X gets blocked when the chat finishes even if lifecycle hooks do not fire.
+When Codex sends `turn-ended`, the wrapper posts to `/codex-hook/stop`, so X gets locked when the chat finishes even if lifecycle hooks do not fire.
 
 To test only this fallback:
 
@@ -139,12 +139,12 @@ npm run completion
 
 `proof` verifies:
 
-- Paused mode leaves X alone and ignores Codex starts
-- Armed mode blocks idle X
-- Manual unlock is blocked
+- Unlocked mode leaves X alone and ignores Codex starts
+- Locked mode locks idle X
+- Manual unlock is disabled
 - Codex/dev start can unlock
-- Stop blocks X
-- Notify fallback blocks X
+- Stop locks X
+- Notify fallback locks X
 - Session watcher start/stop works
 
 ## Privacy
