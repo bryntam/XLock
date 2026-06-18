@@ -39,7 +39,7 @@
       });
       const response = await fetch(`${serviceUrl}/status`);
       const payload = await response.json();
-      setBlocked(!payload.data.twitterAllowed);
+      setBlocked(payload.data.armed && !payload.data.twitterAllowed);
     } catch {
       setBlocked(true);
     }

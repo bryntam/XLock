@@ -8,6 +8,8 @@
     "start": "node service.mjs",
     "launch": "node cli.mjs launch",
     "status": "node cli.mjs status",
+    "arm": "node cli.mjs arm",
+    "pause": "node cli.mjs pause",
     "start-building": "node cli.mjs start",
     "end-building": "node cli.mjs end",
     "hook-status": "node cli.mjs hook-status",

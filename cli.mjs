@@ -324,6 +324,10 @@ if (command === "status") {
 } else if (command === "start") {
   console.error("Manual start is disabled. X only unlocks from a Codex build signal.");
   process.exit(1);
+} else if (command === "arm") {
+  console.log(await api("/gate/arm", { method: "POST" }));
+} else if (command === "pause") {
+  console.log(await api("/gate/pause", { method: "POST" }));
 } else if (command === "end") {
   console.log(await api("/session/end", { method: "POST" }));
 } else if (command === "hook-install") {
@@ -357,6 +361,7 @@ if (command === "status") {
   console.log(`Service: ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"}`);
   if (result.code !== 0 || status.twitterAllowed !== false) process.exit(1);
 } else if (command === "probe-session-watcher") {
+  await api("/gate/arm", { method: "POST" });
   const result = await runSessionWatcherProbe();
   console.log(`Session watcher probe exit: ${result.code}`);
   if (result.stdout.trim()) console.log(`stdout: ${result.stdout.trim()}`);
@@ -377,7 +382,7 @@ if (command === "status") {
   const sessionWatcherStarted = sessionWatchEvents.some((event) => event.stage === "detected" && event.action === "start");
   const sessionWatcherStopped = sessionWatchEvents.some((event) => event.stage === "detected" && event.action === "stop");
   console.log(`Manual block control: OK`);
-  console.log(`Service: OK (${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"})`);
+  console.log(`Service: OK (${status.armed ? "armed" : "paused"}, ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"})`);
   console.log(`Background app: ${serviceLive && screens.includes(".bipg-session-watcher") ? "OK" : "OPEN"} (${serviceLive ? "service reachable" : "service missing"}, ${screens.includes(".bipg-session-watcher") ? "watcher running" : "watcher missing"})`);
   console.log(`Extension heartbeat: ${extension}`);
   console.log(`Hooks: ${hookWatch.newEvents?.length ? "OK" : "OPEN"} (${hookWatch.detail})`);
@@ -385,6 +390,12 @@ if (command === "status") {
   console.log(`Session watcher: ${sessionWatcherStarted && sessionWatcherStopped ? "OK" : "OPEN"} (${sessionWatcherStarted ? "saw start" : "no start yet"}, ${sessionWatcherStopped ? "saw stop" : "no stop yet"})`);
 } else if (command === "proof") {
   const initial = await api("/status");
+  const paused = await api("/gate/pause", { method: "POST" });
+  if (paused.armed !== false || paused.twitterAllowed !== true) throw new Error("Pause did not leave X unlocked.");
+  const pausedHookStart = await api("/codex-hook/start", { method: "POST" });
+  if (pausedHookStart.armed !== false || pausedHookStart.mode !== "idle" || pausedHookStart.twitterAllowed !== true) throw new Error("Paused XLock still reacted to Codex start.");
+  const armed = await api("/gate/arm", { method: "POST" });
+  if (armed.armed !== true || armed.twitterAllowed !== false) throw new Error("Arm did not block idle X.");
   await api("/session/end", { method: "POST" });
   const blocked = await fetch(`${baseUrl}/session/start`, { method: "POST" });
   if (blocked.status !== 403) throw new Error("Manual start loophole is still open.");
@@ -406,9 +417,10 @@ if (command === "status") {
   if (watcherResult.code !== 0) throw new Error(`Session watcher exited ${watcherResult.code}.`);
   const watcherEnded = await api("/status");
   if (watcherEnded.mode !== "idle" || watcherEnded.twitterAllowed !== false) throw new Error("Session watcher did not return X to blocked.");
+  await api("/gate/pause", { method: "POST" });
   console.log("Proof OK");
   console.log(`Started from ${initial.mode}; ended ${watcherEnded.mode}, twitter=${watcherEnded.twitterAllowed ? "unlocked" : "blocked"}`);
 } else {
-  console.error("Usage: node cli.mjs status|launch|start|end|hook-install|hook-status|trust-hooks|watch-hooks|probe-cli-hooks|probe-notify|probe-session-watcher|completion|proof");
+  console.error("Usage: node cli.mjs status|launch|arm|pause|start|end|hook-install|hook-status|trust-hooks|watch-hooks|probe-cli-hooks|probe-notify|probe-session-watcher|completion|proof");
   process.exit(2);
 }

@@ -54,6 +54,7 @@ open dist/XLock.app
 
 The menu bar app starts the existing Node service/session watcher, polls the local status endpoint, and gives quick controls for:
 
+- Arm XLock / Pause XLock
 - Open X
 - Block Now
 - Back to Codex
@@ -61,6 +62,8 @@ The menu bar app starts the existing Node service/session watcher, polls the loc
 - Open Extension Folder
 - Install/Repair Codex Hooks
 - Run Health Check
+
+Use **Pause XLock** when you are not actively building and posting at the same time. While paused, XLock leaves X alone and ignores Codex start/stop signals. Use **Arm XLock** when you want the build-and-post loop: X is blocked while Codex is idle and unlocks only during Codex work.
 
 ## Extension
 
@@ -70,7 +73,7 @@ Load this folder as an unpacked extension in Arc or Chrome:
 extension
 ```
 
-When the service is idle, X gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay blocked when Codex is not working.
+When XLock is paused, X is normal. When XLock is armed and idle, X gets an overlay and the tab stays open. When Codex starts a build turn, the overlay is removed. There is no manual unlock button, because X should stay blocked when XLock is armed and Codex is not working.
 
 ## Codex Hooks
 
@@ -136,6 +139,8 @@ npm run completion
 
 `proof` verifies:
 
+- Paused mode leaves X alone and ignores Codex starts
+- Armed mode blocks idle X
 - Manual unlock is blocked
 - Codex/dev start can unlock
 - Stop blocks X
