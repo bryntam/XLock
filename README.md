@@ -58,10 +58,12 @@ The menu bar app starts the existing Node service/session watcher, polls the loc
 - Open X
 - Block Now
 - Back to Codex
-- Open Dashboard
+- Settings...
 - Open Extension Folder
 - Install/Repair Codex Hooks
 - Run Health Check
+
+`Settings...` opens the native macOS settings window for controls, setup actions, system status, and the latest health check result.
 
 Use **Unlock XLock** when you are not actively building and posting at the same time. While unlocked, XLock leaves X alone and ignores Codex start/stop signals. Use **Lock XLock** when you want the build-and-post loop: X is locked while Codex is idle and unlocks only during Codex work.
 
