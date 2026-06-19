@@ -185,7 +185,7 @@ async function hookWatchStatus() {
       watching: false,
       eventCount: events.length,
       newEvents: [],
-      detail: "No hook watch is armed. Run npm run watch-hooks."
+      detail: "No hook watch has started. Run npm run watch-hooks."
     };
   }
 
@@ -324,6 +324,10 @@ if (command === "status") {
 } else if (command === "start") {
   console.error("Manual start is disabled. X only unlocks from a Codex build signal.");
   process.exit(1);
+} else if (command === "lock" || command === "arm") {
+  console.log(await api("/gate/lock", { method: "POST" }));
+} else if (command === "unlock" || command === "pause") {
+  console.log(await api("/gate/unlock", { method: "POST" }));
 } else if (command === "end") {
   console.log(await api("/session/end", { method: "POST" }));
 } else if (command === "hook-install") {
@@ -338,7 +342,7 @@ if (command === "status") {
   console.log("Paste it in Codex, trust the global hook, then run npm run hook-status after a fresh prompt.");
 } else if (command === "watch-hooks") {
   await startHookWatch();
-  console.log("Hook watch armed.");
+  console.log("Hook watch started.");
   console.log(`Now send a new Codex prompt from ${guardedWorkspace}, then run npm run hook-status.`);
 } else if (command === "probe-cli-hooks") {
   console.log("Running Codex CLI hook probe...");
@@ -354,15 +358,16 @@ if (command === "status") {
   if (result.stdout.trim()) console.log(`stdout: ${result.stdout.trim()}`);
   if (result.stderr.trim()) console.error(`stderr: ${result.stderr.trim()}`);
   const status = await api("/status");
-  console.log(`Service: ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"}`);
+  console.log(`Service: ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "locked"}`);
   if (result.code !== 0 || status.twitterAllowed !== false) process.exit(1);
 } else if (command === "probe-session-watcher") {
+  await api("/gate/lock", { method: "POST" });
   const result = await runSessionWatcherProbe();
   console.log(`Session watcher probe exit: ${result.code}`);
   if (result.stdout.trim()) console.log(`stdout: ${result.stdout.trim()}`);
   if (result.stderr.trim()) console.error(`stderr: ${result.stderr.trim()}`);
   const status = await api("/status");
-  console.log(`Service: ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"}`);
+  console.log(`Service: ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "locked"}`);
   if (result.code !== 0 || status.twitterAllowed !== false) process.exit(1);
 } else if (command === "completion") {
   const status = await api("/status");
@@ -376,39 +381,46 @@ if (command === "status") {
   const notifyBlocked = notifyEvents.some((event) => event.stage === "blocked");
   const sessionWatcherStarted = sessionWatchEvents.some((event) => event.stage === "detected" && event.action === "start");
   const sessionWatcherStopped = sessionWatchEvents.some((event) => event.stage === "detected" && event.action === "stop");
-  console.log(`Manual block control: OK`);
-  console.log(`Service: OK (${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "blocked"})`);
+  console.log(`Manual lock control: OK`);
+  console.log(`Service: OK (${status.locked ? "locked" : "unlocked"}, ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "locked"})`);
   console.log(`Background app: ${serviceLive && screens.includes(".bipg-session-watcher") ? "OK" : "OPEN"} (${serviceLive ? "service reachable" : "service missing"}, ${screens.includes(".bipg-session-watcher") ? "watcher running" : "watcher missing"})`);
   console.log(`Extension heartbeat: ${extension}`);
   console.log(`Hooks: ${hookWatch.newEvents?.length ? "OK" : "OPEN"} (${hookWatch.detail})`);
-  console.log(`Notify fallback: ${notify.installed && notifyBlocked ? "OK" : "OPEN"} (${notify.installed ? "installed" : "not installed"}, ${notifyBlocked ? "blocked at least once" : "no block event yet"})`);
+  console.log(`Notify fallback: ${notify.installed && notifyBlocked ? "OK" : "OPEN"} (${notify.installed ? "installed" : "not installed"}, ${notifyBlocked ? "locked at least once" : "no lock event yet"})`);
   console.log(`Session watcher: ${sessionWatcherStarted && sessionWatcherStopped ? "OK" : "OPEN"} (${sessionWatcherStarted ? "saw start" : "no start yet"}, ${sessionWatcherStopped ? "saw stop" : "no stop yet"})`);
 } else if (command === "proof") {
   const initial = await api("/status");
+  const unlocked = await api("/gate/unlock", { method: "POST" });
+  if (unlocked.locked !== false || unlocked.twitterAllowed !== true) throw new Error("Unlock did not leave X normal.");
+  const unlockedHookStart = await api("/codex-hook/start", { method: "POST" });
+  if (unlockedHookStart.locked !== false || unlockedHookStart.mode !== "idle" || unlockedHookStart.twitterAllowed !== true) throw new Error("Unlocked XLock still reacted to Codex start.");
+  const locked = await api("/gate/lock", { method: "POST" });
+  if (locked.locked !== true || locked.twitterAllowed !== false) throw new Error("Lock did not lock idle X.");
   await api("/session/end", { method: "POST" });
-  const blocked = await fetch(`${baseUrl}/session/start`, { method: "POST" });
-  if (blocked.status !== 403) throw new Error("Manual start loophole is still open.");
+  const lockedOut = await fetch(`${baseUrl}/session/start`, { method: "POST" });
+  if (lockedOut.status !== 403) throw new Error("Manual start loophole is still open.");
   const started = await api("/dev/session/start", { method: "POST" });
   if (started.mode !== "building" || started.twitterAllowed !== true || started.sessionSource !== "dev") throw new Error("Dev start did not unlock X for proof.");
   const ended = await api("/session/end", { method: "POST" });
-  if (ended.mode !== "idle" || ended.twitterAllowed !== false) throw new Error("Manual end did not block X.");
+  if (ended.mode !== "idle" || ended.twitterAllowed !== false) throw new Error("Manual end did not lock X.");
   const hookStarted = await api("/codex-hook/start", { method: "POST" });
   if (hookStarted.mode !== "building" || hookStarted.sessionSource !== "codex") throw new Error("Hook start did not create a Codex session.");
   const hookEnded = await api("/codex-hook/stop", { method: "POST" });
-  if (hookEnded.mode !== "idle" || hookEnded.twitterAllowed !== false) throw new Error("Hook stop did not block X.");
+  if (hookEnded.mode !== "idle" || hookEnded.twitterAllowed !== false) throw new Error("Hook stop did not lock X.");
   const notifyStarted = await api("/dev/session/start", { method: "POST" });
   if (notifyStarted.mode !== "building" || notifyStarted.twitterAllowed !== true) throw new Error("Notify proof could not start a build session.");
   const notifyResult = await runNotifyProbe();
   if (notifyResult.code !== 0) throw new Error(`Notify wrapper exited ${notifyResult.code}.`);
   const notifyEnded = await api("/status");
-  if (notifyEnded.mode !== "idle" || notifyEnded.twitterAllowed !== false) throw new Error("Notify fallback did not block X.");
+  if (notifyEnded.mode !== "idle" || notifyEnded.twitterAllowed !== false) throw new Error("Notify fallback did not lock X.");
   const watcherResult = await runSessionWatcherProbe();
   if (watcherResult.code !== 0) throw new Error(`Session watcher exited ${watcherResult.code}.`);
   const watcherEnded = await api("/status");
-  if (watcherEnded.mode !== "idle" || watcherEnded.twitterAllowed !== false) throw new Error("Session watcher did not return X to blocked.");
+  if (watcherEnded.mode !== "idle" || watcherEnded.twitterAllowed !== false) throw new Error("Session watcher did not return X to locked.");
+  await api("/gate/unlock", { method: "POST" });
   console.log("Proof OK");
-  console.log(`Started from ${initial.mode}; ended ${watcherEnded.mode}, twitter=${watcherEnded.twitterAllowed ? "unlocked" : "blocked"}`);
+  console.log(`Started from ${initial.mode}; ended ${watcherEnded.mode}, twitter=${watcherEnded.twitterAllowed ? "unlocked" : "locked"}`);
 } else {
-  console.error("Usage: node cli.mjs status|launch|start|end|hook-install|hook-status|trust-hooks|watch-hooks|probe-cli-hooks|probe-notify|probe-session-watcher|completion|proof");
+  console.error("Usage: node cli.mjs status|launch|lock|unlock|start|end|hook-install|hook-status|trust-hooks|watch-hooks|probe-cli-hooks|probe-notify|probe-session-watcher|completion|proof");
   process.exit(2);
 }

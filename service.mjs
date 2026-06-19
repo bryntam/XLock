@@ -15,6 +15,7 @@ const maxSessionSeconds = Number(process.env.BIPG_MAX_SESSION_SECONDS || 60 * 60
 const autoFocus = process.env.BIPG_AUTO_FOCUS !== "0";
 
 const initialState = {
+  locked: false,
   mode: "idle",
   twitterAllowed: false,
   sessionSource: "manual",
@@ -31,7 +32,12 @@ let state = await loadState();
 async function loadState() {
   if (!existsSync(stateFile)) return { ...initialState };
   try {
-    return { ...initialState, ...JSON.parse(await readFile(stateFile, "utf8")) };
+    const loaded = JSON.parse(await readFile(stateFile, "utf8"));
+    return {
+      ...initialState,
+      ...loaded,
+      locked: typeof loaded.locked === "boolean" ? loaded.locked : loaded.armed === true
+    };
   } catch {
     return { ...initialState };
   }
@@ -99,10 +105,18 @@ async function expireStaleSessionIfNeeded() {
 }
 
 function publicState() {
-  return { ...state, elapsedSeconds: elapsedSeconds() };
+  return {
+    ...state,
+    armed: state.locked,
+    twitterAllowed: state.locked ? state.twitterAllowed : true,
+    locked: state.locked,
+    lockActive: state.locked,
+    elapsedSeconds: elapsedSeconds()
+  };
 }
 
 async function startSession(source = "manual") {
+  if (!state.locked) return publicState();
   if (state.mode === "building") return publicState();
   state = {
     ...state,
@@ -128,6 +142,33 @@ async function endSession() {
   };
   await saveState();
   if (autoFocus) focusCodex().catch(() => undefined);
+  return publicState();
+}
+
+async function lockGate() {
+  state = {
+    ...state,
+    locked: true,
+    mode: "idle",
+    twitterAllowed: false,
+    sessionSource: "manual",
+    endedAt: new Date().toISOString(),
+    autoEndedAt: null
+  };
+  await saveState();
+  return publicState();
+}
+
+async function unlockGate() {
+  state = {
+    ...state,
+    locked: false,
+    mode: "idle",
+    twitterAllowed: false,
+    endedAt: new Date().toISOString(),
+    autoEndedAt: null
+  };
+  await saveState();
   return publicState();
 }
 
@@ -169,16 +210,18 @@ function dashboard() {
   .status{border:1px solid #333842;padding:18px;border-radius:8px;background:#181a20;margin-bottom:16px}
   .mode{font-size:42px;font-weight:800;margin:6px 0}
   button{font:inherit;border:0;border-radius:8px;padding:12px 14px;margin:0 8px 8px 0;cursor:pointer}
-  .end{background:#ff6b57;color:#1b0905}.plain{background:#2b303a;color:#f5f5f0}
+  .lock{background:#36c275;color:#06140c}.end{background:#ff6b57;color:#1b0905}.plain{background:#2b303a;color:#f5f5f0}
   code{background:#252933;padding:2px 5px;border-radius:5px}
 </style>
 <main>
   <h1>XLock</h1>
   <section class="status">
-    <div>X is</div>
+    <div id="label">X is</div>
     <div id="mode" class="mode">...</div>
     <div id="meta"></div>
   </section>
+  <button class="lock" onclick="post('/gate/lock')">Lock XLock</button>
+  <button class="plain" onclick="post('/gate/unlock')">Unlock XLock</button>
   <button class="end" onclick="post('/session/end')">End & Block X</button>
   <button class="plain" onclick="post('/focus/twitter')">Open X</button>
   <button class="plain" onclick="post('/focus/codex')">Back to Codex</button>
@@ -189,8 +232,9 @@ function dashboard() {
 <script>
 async function refresh(){
   const r = await fetch('/status'); const {data}=await r.json();
-  mode.textContent = data.twitterAllowed ? 'unlocked' : 'blocked';
-  meta.textContent = data.mode + ' · ' + data.sessionSource + ' · ' + data.elapsedSeconds + 's' + (data.autoEndedAt ? ' · auto-locked' : '');
+  label.textContent = data.locked ? 'X is' : 'XLock is';
+  mode.textContent = data.locked ? (data.twitterAllowed ? 'unlocked' : 'locked') : 'unlocked';
+  meta.textContent = (data.locked ? data.mode : 'off') + ' · ' + data.sessionSource + ' · ' + data.elapsedSeconds + 's' + (data.autoEndedAt ? ' · auto-locked' : '');
 }
 async function post(path){ await fetch(path,{method:'POST'}); await refresh(); }
 refresh(); setInterval(refresh, 1000);
@@ -203,6 +247,8 @@ const server = createServer(async (request, response) => {
   if (request.method === "OPTIONS") return send(response, 204, {});
   if (request.method === "GET" && url.pathname === "/") return html(response, dashboard());
   if (request.method === "GET" && url.pathname === "/status") return send(response, 200, { ok: true, data: publicState() });
+  if (request.method === "POST" && (url.pathname === "/gate/lock" || url.pathname === "/gate/arm")) return send(response, 200, { ok: true, data: await lockGate() });
+  if (request.method === "POST" && (url.pathname === "/gate/unlock" || url.pathname === "/gate/pause")) return send(response, 200, { ok: true, data: await unlockGate() });
   if (request.method === "POST" && url.pathname === "/session/start") return send(response, 403, { ok: false, error: "X only unlocks from a Codex build signal." });
   if (request.method === "POST" && url.pathname === "/dev/session/start") return send(response, 200, { ok: true, data: await startSession("dev") });
   if (request.method === "POST" && url.pathname === "/session/end") return send(response, 200, { ok: true, data: await endSession() });

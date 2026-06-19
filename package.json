@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "menu-bar": "swift run XLockMenuBar",
+    "package-app": "bash scripts/package-macos-app.sh",
     "start": "node service.mjs",
     "launch": "node cli.mjs launch",
     "status": "node cli.mjs status",
+    "lock": "node cli.mjs lock",
+    "unlock": "node cli.mjs unlock",
     "start-building": "node cli.mjs start",
     "end-building": "node cli.mjs end",
     "hook-status": "node cli.mjs hook-status",
