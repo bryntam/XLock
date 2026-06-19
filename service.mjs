@@ -189,6 +189,7 @@ function send(response, status, data, headers = {}) {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-allow-headers": "content-type",
+    "access-control-allow-private-network": "true",
     ...headers
   });
   response.end(JSON.stringify(data, null, 2));

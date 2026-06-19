@@ -32,16 +32,17 @@
 
   async function tick() {
     try {
-      await fetch(`${serviceUrl}/extension/heartbeat`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: location.href })
-      });
       const response = await fetch(`${serviceUrl}/status`);
       const payload = await response.json();
       setBlocked(payload.data.locked && !payload.data.twitterAllowed);
+
+      fetch(`${serviceUrl}/extension/heartbeat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: location.href })
+      }).catch(() => undefined);
     } catch {
-      setBlocked(true);
+      setBlocked(false);
     }
   }
 
