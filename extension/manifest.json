@@ -3,7 +3,7 @@
   "name": "XLock",
   "version": "0.1.0",
   "description": "Locks X unless a local Codex build session is active.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": ["http://localhost:47831/*", "https://x.com/*", "https://twitter.com/*"],
   "content_scripts": [
     {
@@ -12,6 +12,9 @@
       "run_at": "document_idle"
     }
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "XLock"

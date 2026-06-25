@@ -1,12 +1,25 @@
 (function () {
-  const serviceUrl = "http://localhost:47831";
-  const overlayId = "xlock-overlay";
+  const legacyOverlayId = "xlock-overlay";
+  const overlayId = "xlock-overlay-v2";
+  const scriptVersion = "xlock-background-status-v2";
+  const statusCacheKey = "xlockLastStatus";
+  const fallbackWindowMs = 30_000;
+  const scrollKeys = new Set(["ArrowDown", "ArrowUp", "End", "Home", "PageDown", "PageUp", " "]);
+  let tickInFlight = false;
+  let scrollLock = null;
+
+  if (window.__xlockContentScriptVersion === scriptVersion) return;
+  window.__xlockContentScriptVersion = scriptVersion;
 
   function ensureOverlay() {
     let overlay = document.getElementById(overlayId);
-    if (overlay) return overlay;
+    if (overlay) {
+      overlay.dataset.xlockVersion = scriptVersion;
+      return overlay;
+    }
     overlay = document.createElement("div");
     overlay.id = overlayId;
+    overlay.dataset.xlockVersion = scriptVersion;
     overlay.style.cssText = [
       "position:fixed",
       "inset:0",
@@ -25,24 +38,126 @@
     return overlay;
   }
 
+  function preventScroll(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function preventScrollKey(event) {
+    if (!scrollKeys.has(event.key)) return;
+    preventScroll(event);
+  }
+
+  function restoreScrollPosition() {
+    if (!scrollLock) return;
+    window.scrollTo(scrollLock.x, scrollLock.y);
+  }
+
+  function enableScrollLock() {
+    if (scrollLock) return;
+
+    scrollLock = {
+      x: window.scrollX,
+      y: window.scrollY,
+      htmlOverflow: document.documentElement.style.overflow,
+      htmlOverscrollBehavior: document.documentElement.style.overscrollBehavior,
+      bodyOverflow: document.body?.style.overflow || "",
+      bodyOverscrollBehavior: document.body?.style.overscrollBehavior || ""
+    };
+
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    if (document.body) {
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+    }
+
+    window.addEventListener("wheel", preventScroll, { capture: true, passive: false });
+    window.addEventListener("touchmove", preventScroll, { capture: true, passive: false });
+    window.addEventListener("keydown", preventScrollKey, { capture: true });
+    window.addEventListener("scroll", restoreScrollPosition, { capture: true });
+  }
+
+  function disableScrollLock() {
+    if (!scrollLock) return;
+
+    window.removeEventListener("wheel", preventScroll, { capture: true });
+    window.removeEventListener("touchmove", preventScroll, { capture: true });
+    window.removeEventListener("keydown", preventScrollKey, { capture: true });
+    window.removeEventListener("scroll", restoreScrollPosition, { capture: true });
+
+    document.documentElement.style.overflow = scrollLock.htmlOverflow;
+    document.documentElement.style.overscrollBehavior = scrollLock.htmlOverscrollBehavior;
+    if (document.body) {
+      document.body.style.overflow = scrollLock.bodyOverflow;
+      document.body.style.overscrollBehavior = scrollLock.bodyOverscrollBehavior;
+    }
+
+    const { x, y } = scrollLock;
+    scrollLock = null;
+    window.scrollTo(x, y);
+  }
+
   function setBlocked(blocked) {
-    const overlay = ensureOverlay();
-    overlay.style.display = blocked ? "flex" : "none";
+    if (!blocked) {
+      document.getElementById(overlayId)?.remove();
+      document.getElementById(legacyOverlayId)?.remove();
+      disableScrollLock();
+      return;
+    }
+
+    document.getElementById(legacyOverlayId)?.remove();
+    ensureOverlay();
+    enableScrollLock();
+  }
+
+  function blockedFromPayload(payload) {
+    return Boolean(payload?.data?.locked && !payload.data.twitterAllowed);
+  }
+
+  function blockedFromCache(cache) {
+    if (!cache?.data || typeof cache.updatedAt !== "number") return null;
+    if (Date.now() - cache.updatedAt > fallbackWindowMs) return null;
+    return Boolean(cache.data.locked && !cache.data.twitterAllowed);
+  }
+
+  async function rememberStatus(payload) {
+    if (!payload?.data) return;
+    await chrome.storage.local.set({
+      [statusCacheKey]: {
+        data: payload.data,
+        updatedAt: Date.now()
+      }
+    });
+  }
+
+  async function readCachedBlocked() {
+    const result = await chrome.storage.local.get(statusCacheKey);
+    return blockedFromCache(result?.[statusCacheKey]);
   }
 
   async function tick() {
-    try {
-      const response = await fetch(`${serviceUrl}/status`);
-      const payload = await response.json();
-      setBlocked(payload.data.locked && !payload.data.twitterAllowed);
+    if (tickInFlight) return;
+    tickInFlight = true;
 
-      fetch(`${serviceUrl}/extension/heartbeat`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: location.href })
-      }).catch(() => undefined);
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "xlock-status", url: location.href });
+      if (!response?.ok) {
+        const cachedBlocked = blockedFromCache(response?.cached) ?? await readCachedBlocked();
+        if (cachedBlocked !== null) {
+          setBlocked(cachedBlocked);
+          return;
+        }
+        throw new Error(response?.error || "XLock status unavailable");
+      }
+      const payload = response.payload;
+      await rememberStatus(payload);
+      setBlocked(blockedFromPayload(payload));
     } catch {
-      setBlocked(false);
+      const cachedBlocked = await readCachedBlocked();
+      setBlocked(cachedBlocked === null ? false : cachedBlocked);
+    } finally {
+      tickInFlight = false;
     }
   }
 

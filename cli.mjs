@@ -372,7 +372,10 @@ if (command === "status") {
 } else if (command === "completion") {
   const status = await api("/status");
   const serviceLive = true;
-  const extension = status.lastHeartbeatAt ? "OK" : "OPEN";
+  const heartbeatAgeSeconds = status.lastHeartbeatAt
+    ? Math.round((Date.now() - new Date(status.lastHeartbeatAt).getTime()) / 1000)
+    : null;
+  const extension = heartbeatAgeSeconds !== null && heartbeatAgeSeconds <= 15 ? "OK" : "OPEN";
   const hookWatch = await hookWatchStatus();
   const notify = await notifyConfigStatus();
   const notifyEvents = await readNotifyEvents();
@@ -384,11 +387,18 @@ if (command === "status") {
   console.log(`Manual lock control: OK`);
   console.log(`Service: OK (${status.locked ? "locked" : "unlocked"}, ${status.mode}, twitter=${status.twitterAllowed ? "unlocked" : "locked"})`);
   console.log(`Background app: ${serviceLive && screens.includes(".bipg-session-watcher") ? "OK" : "OPEN"} (${serviceLive ? "service reachable" : "service missing"}, ${screens.includes(".bipg-session-watcher") ? "watcher running" : "watcher missing"})`);
-  console.log(`Extension heartbeat: ${extension}`);
+  console.log(`Extension heartbeat: ${extension} (${heartbeatAgeSeconds === null ? "none" : `${heartbeatAgeSeconds}s ago`})`);
   console.log(`Hooks: ${hookWatch.newEvents?.length ? "OK" : "OPEN"} (${hookWatch.detail})`);
   console.log(`Notify fallback: ${notify.installed && notifyBlocked ? "OK" : "OPEN"} (${notify.installed ? "installed" : "not installed"}, ${notifyBlocked ? "locked at least once" : "no lock event yet"})`);
   console.log(`Session watcher: ${sessionWatcherStarted && sessionWatcherStopped ? "OK" : "OPEN"} (${sessionWatcherStarted ? "saw start" : "no start yet"}, ${sessionWatcherStopped ? "saw stop" : "no stop yet"})`);
 } else if (command === "proof") {
+  const manifest = JSON.parse(await readFile(resolve(root, "extension/manifest.json"), "utf8"));
+  const backgroundWorker = manifest.background?.service_worker;
+  if (backgroundWorker !== "background.js") throw new Error("Extension background worker is not registered.");
+  if (!manifest.permissions?.includes("scripting") || !manifest.permissions?.includes("tabs")) throw new Error("Extension is missing tab injection permissions.");
+  if (!manifest.host_permissions?.includes("http://localhost:47831/*")) throw new Error("Extension is missing localhost host permission.");
+  await readFile(resolve(root, "extension", backgroundWorker), "utf8");
+
   const initial = await api("/status");
   const unlocked = await api("/gate/unlock", { method: "POST" });
   if (unlocked.locked !== false || unlocked.twitterAllowed !== true) throw new Error("Unlock did not leave X normal.");
